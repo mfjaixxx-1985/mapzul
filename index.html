@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Mapzul — Navigasi Percuma</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; font-family:-apple-system,'Segoe UI',Roboto,sans-serif; }
+  body { overflow:hidden; background:#0d1117; }
+  #map { position:absolute; inset:0; }
+  /* Top bar — search */
+  #topbar { position:absolute; top:0; left:0; right:0; z-index:1000; padding:12px; background:linear-gradient(#0d1117ee,#0d111700); }
+  #searchbox { display:flex; gap:8px; }
+  #search { flex:1; padding:14px 16px; border-radius:14px; border:1px solid #30363d; background:#161b22ee; color:#e6edf3; font-size:16px; outline:none; }
+  #search:focus { border-color:#2f81f7; }
+  #btnLoc { padding:0 16px; border-radius:14px; border:none; background:#2f81f7; color:#fff; font-size:20px; cursor:pointer; }
+  /* Results list */
+  #results { position:absolute; top:70px; left:12px; right:12px; z-index:1000; max-height:45vh; overflow-y:auto; display:none; }
+  .res { background:#161b22f5; border:1px solid #30363d; border-radius:12px; padding:12px 14px; margin-bottom:8px; cursor:pointer; color:#e6edf3; }
+  .res:active { background:#1f2937; }
+  .res .name { font-weight:700; font-size:15px; }
+  .res .addr { font-size:12px; color:#8b949e; margin-top:2px; }
+  /* Bottom panel — route info */
+  #panel { position:absolute; bottom:0; left:0; right:0; z-index:1000; background:#161b22f8; border-radius:20px 20px 0 0; padding:16px 20px calc(16px + env(safe-area-inset-bottom)); transform:translateY(110%); transition:transform .3s; box-shadow:0 -8px 30px #000a; }
+  #panel.show { transform:translateY(0); }
+  #panel .eta { font-size:34px; font-weight:800; color:#3fb950; }
+  #panel .meta { color:#8b949e; font-size:14px; margin-top:2px; }
+  #panel .steps { max-height:28vh; overflow-y:auto; margin-top:12px; border-top:1px solid #30363d; padding-top:10px; }
+  .step { display:flex; gap:10px; padding:8px 0; color:#e6edf3; font-size:14px; border-bottom:1px solid #21262d; }
+  .step .man { font-size:20px; }
+  #btnGo { width:100%; margin-top:12px; padding:14px; border:none; border-radius:14px; background:#238636; color:#fff; font-size:17px; font-weight:800; cursor:pointer; }
+  #btnClose { position:absolute; top:10px; right:14px; background:none; border:none; color:#8b949e; font-size:22px; cursor:pointer; }
+  #status { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); z-index:1200; background:#161b22f0; color:#e6edf3; padding:14px 22px; border-radius:14px; display:none; font-size:15px; }
+  /* Logo */
+  #logo { position:absolute; bottom:calc(16px + env(safe-area-inset-bottom)); right:16px; z-index:900; background:#161b22e0; border:1px solid #30363d; border-radius:12px; padding:6px 12px; color:#3fb950; font-weight:800; font-size:14px; letter-spacing:.5px; }
+  /* Recenter btn */
+  #btnCenter { position:absolute; right:16px; bottom:calc(60px + env(safe-area-inset-bottom)); z-index:900; width:46px; height:46px; border-radius:50%; border:1px solid #30363d; background:#161b22ee; color:#e6edf3; font-size:20px; cursor:pointer; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div id="topbar">
+  <div id="searchbox">
+    <input id="search" placeholder="Cari lokasi… (contoh: KLCC, Melaka)" autocomplete="off">
+    <button id="btnLoc" title="Lokasi saya">◎</button>
+  </div>
+</div>
+<div id="results"></div>
+<div id="panel">
+  <button id="btnClose">✕</button>
+  <div class="eta" id="eta">--</div>
+  <div class="meta" id="dist"></div>
+  <button id="btnGo">Mula Navigasi</button>
+  <div class="steps" id="steps"></div>
+</div>
+<div id="status"></div>
+<button id="btnCenter" title="Pusatkan">⌖</button>
+<div id="logo">MAPZUL</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ====== MAP (OpenStreetMap tiles — free) ======
+const map = L.map('map', {zoomControl:false}).setView([3.139, 101.687], 13);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19, attribution: '© OpenStreetMap | Mapzul'
+}).addTo(map);
+
+let meMarker = null, mePos = null;
+let fromPt = null, toPt = null;
+let routeLine = null, toMarker = null, fromMarker = null;
+let altLines = [];
+let stepsData = [];
+
+const $ = id => document.getElementById(id);
+const status = (msg, show=true) => { $('status').textContent = msg; $('status').style.display = show?'block':'none'; };
+
+// ====== GEOLOCATION (Waze-like "me" dot) ======
+function updateMe(pos, accuracy) {
+  mePos = [pos.coords.latitude, pos.coords.longitude];
+  if (!meMarker) {
+    meMarker = L.circleMarker(mePos, {radius:9, color:'#fff', weight:3, fillColor:'#2f81f7', fillOpacity:1}).addTo(map);
+  } else meMarker.setLatLng(mePos);
+  $('btnCenter').style.display = 'block';
+}
+navigator.geolocation?.watchPosition(updateMe, ()=>{}, {enableHighAccuracy:true, maximumAge:5000});
+
+$('btnLoc').onclick = () => {
+  if (!mePos) { status('Menunggu lokasi GPS…'); navigator.geolocation?.getCurrentPosition(p=>{updateMe(p); status('',false); map.setView(mePos,16);}, ()=>status('GPS tidak dibenarkan',false), {enableHighAccuracy:true}); }
+  else map.setView(mePos, 16);
+};
+$('btnCenter').onclick = () => mePos && map.setView(mePos, 16);
+
+// ====== SEARCH — Nominatim (free OSM geocoder) ======
+let searchTimer;
+$('search').addEventListener('input', e => {
+  clearTimeout(searchTimer);
+  const q = e.target.value.trim();
+  if (q.length < 3) { $('results').style.display='none'; return; }
+  searchTimer = setTimeout(() => doSearch(q), 400);
+});
+async function doSearch(q) {
+  status('Mencari…');
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=8&accept-language=ms&q=${encodeURIComponent(q)}`;
+    const r = await fetch(url, {headers:{'Accept-Language':'ms'}});
+    const data = await r.json();
+    status('', false);
+    const box = $('results'); box.innerHTML=''; box.style.display='block';
+    if (!data.length) { box.innerHTML = '<div class="res"><div class="name">Tiada hasil</div></div>'; return; }
+    data.forEach(d => {
+      const el = document.createElement('div'); el.className='res';
+      const name = d.display_name.split(',');
+      el.innerHTML = `<div class="name">${name[0]}</div><div class="addr">${d.display_name}</div>`;
+      el.onclick = () => { box.style.display='none'; $('search').value = name[0]; setDest([+d.lat, +d.lon], name[0]); };
+      box.appendChild(el);
+    });
+  } catch(e) { status('Gagal cari — cuba lagi', false); }
+}
+document.addEventListener('click', e => { if (!e.target.closest('#results') && !e.target.closest('#search')) $('results').style.display='none'; });
+
+function setDest(latlng, name) {
+  toPt = latlng;
+  if (toMarker) map.removeLayer(toMarker);
+  toMarker = L.marker(latlng).addTo(map);
+  if (!fromPt && mePos) fromPt = mePos;
+  if (!fromPt) { map.setView(latlng, 15); status('Aktifkan GPS untuk laluan dari lokasi anda', false); return; }
+  calcRoute();
+}
+
+// ====== ROUTING — OSRM (free open routing) ======
+async function calcRoute() {
+  if (!fromPt || !toPt) return;
+  status('Mengira laluan terbaik…');
+  try {
+    const url = `https://router.project-osrm.org/route/v1/driving/${fromPt[1]},${fromPt[0]};${toPt[1]},${toPt[0]}?overview=full&geometries=geojson&steps=true&alternatives=true`;
+    const r = await fetch(url);
+    const data = await r.json();
+    status('', false);
+    if (data.code !== 'Ok') { status('Tiada jalan ditemui', false); return; }
+    const route = data.routes[0];
+    if (window.showAlternatives) window.showAlternatives(data);
+    else if (routeLine) map.removeLayer(routeLine);
+    if (!window.showAlternatives) routeLine = L.geoJSON(route.geometry, {style:{color:'#2f81f7', weight:6, opacity:.9}}).addTo(map);
+    map.fitBounds(routeLine ? routeLine.getBounds().pad(0.15) : L.geoJSON(route.geometry).getBounds().pad(0.15));
+
+    const mins = Math.round(route.duration/60);
+    const hrs = Math.floor(mins/60), rem = mins%60;
+    $('eta').textContent = hrs ? `${hrs} j ${rem} m` : `${rem} min`;
+    const km = route.distance/1000;
+    $('dist').textContent = `${km.toFixed(1)} km • laluan terpantas`;
+
+    // Langkah navigasi (terjemahan ringkas pergerakan)
+    const maneuver = {turn:'Beliok', 'new name':'Terus', depart:'Mula', arrive:'Sampai', merge:'Cantum', 'on ramp':'Masuk lebuhraya', 'off ramp':'Keluar lebuhraya', fork:'Percabangan', 'end of road':'Hujung jalan', continue:'Terus', roundabout:'Bulatan', 'rotary':'Bulatan', 'roundabout turn':'Bulatan', notification:'Makluman'};
+    stepsData = route.legs[0].steps.map(s => {
+      const m = s.maneuver;
+      const arrow = ({'left':'⬅','right':'➡','straight':'⬆','slight left':'↖','slight right':'↗','sharp left':'↰','sharp right':'↱','uturn':'↩'})[m.modifier] || '⬆';
+      return {icon: m.type==='depart'?'🚗': m.type==='arrive'?'🏁': arrow,
+              text: `${maneuver[m.type]||'Terus'} ke ${s.name || 'jalan'} (${Math.round(s.distance)} m)`};
+    });
+    $('steps').innerHTML = stepsData.map(s=>`<div class="step"><span class="man">${s.icon}</span><span>${s.text}</span></div>`).join('');
+    $('panel').classList.add('show');
+  } catch(e) { status('Gagal kira laluan — semak sambungan', false); }
+}
+
+// Tap long on map = set destination (Waze-style)
+let pressTimer;
+map.on('mousedown', e => { pressTimer = setTimeout(()=>setDest([e.latlng.lat, e.latlng.lng], 'Titik pilihan'), 600); });
+map.on('mouseup', () => clearTimeout(pressTimer));
+map.on('click', e => { if (fromMarker && !toMarker) setDest([e.latlng.lat, e.latlng.lng], 'Destinasi'); });
+
+$('btnClose').onclick = () => { $('panel').classList.remove('show'); };
+
+// ====== NAVIGATION MODE (follow me) ======
+$('btnGo').onclick = () => {
+  $('btnGo').textContent = 'Navigasi Aktif ✓';
+  $('btnGo').style.background = '#3fb950';
+  map.setView(mePos, 17, {animate:true});
+  // follow user position, speak next step (WebSpeech — free, built-in)
+  const synth = window.speechSynthesis;
+  let spoken = new Set();
+  navigator.geolocation?.watchPosition(pos => {
+    updateMe(pos);
+    map.setView(mePos, 17, {animate:true});
+    // cari langkah terdekat yang belum disebut
+    for (let i=0;i<stepsData.length;i++) {
+      if (!spoken.has(i) && i===0) { spoken.add(i); synth.speak(new SpeechSynthesisUtterance(stepsData[i].text)); break; }
+    }
+  }, ()=>{}, {enableHighAccuracy:true});
+};
+
+// TAP: tap map to set "from" first if no GPS
+map.on('contextmenu', e => {
+  fromPt = [e.latlng.lat, e.latlng.lng];
+  if (fromMarker) map.removeLayer(fromMarker);
+  fromMarker = L.circleMarker(fromPt, {radius:8, color:'#fff', weight:2, fillColor:'#f85149', fillOpacity:1}).addTo(map);
+  status('Titik mula ditetapkan — pilih destinasi', false);
+  if (toPt) calcRoute();
+});
+</script>
+<script src="v2.js"></script>
+</body>
+</html>
