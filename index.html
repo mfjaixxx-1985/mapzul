@@ -189,6 +189,7 @@ $('btnGo').onclick = () => {
   }, ()=>{}, {enableHighAccuracy:true});
 };
 
+window.map = map;
 // TAP: tap map to set "from" first if no GPS
 map.on('contextmenu', e => {
   fromPt = [e.latlng.lat, e.latlng.lng];
@@ -198,6 +199,7 @@ map.on('contextmenu', e => {
   if (toPt) calcRoute();
 });
 </script>
-<script src="v2.js"></script>
+<script src="v2.js?v=31"></script></script>
+<script src="v3.js?v=31"></script>
 </body>
 </html>

@@ -95,8 +95,6 @@ loadReports();
 
 // ==================== 3. PWA (manifest + service worker inline) ====================
 // Manifest dibina sebagai blob (satu-fail friendly)
-const manifest = {name:'Mapzul', short_name:'Mapzul', start_url:'.', display:'standalone', background_color:'#0d1117', theme_color:'#0d1117',
-  icons:[{src: iconDataURI, sizes:'192x192', type:'image/png'}]};
 const iconDataURI = (() => {
   // logo "M" hijau pada latar gelap — jana canvas
   const c = document.createElement('canvas'); c.width = c.height = 192;
@@ -106,6 +104,8 @@ const iconDataURI = (() => {
   x.fillText('M', 96, 104);
   return c.toDataURL('image/png');
 })();
+const manifest = {name:'Mapzul', short_name:'Mapzul', start_url:'.', display:'standalone', background_color:'#0d1117', theme_color:'#0d1117',
+  icons:[{src: iconDataURI, sizes:'192x192', type:'image/png'}]};
 const mfBlob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
 document.querySelector('head').insertAdjacentHTML('beforeend', `<link rel="manifest" href="${URL.createObjectURL(mfBlob)}">`);
 document.querySelector('head').insertAdjacentHTML('beforeend', `<link rel="icon" href="${iconDataURI}">`);
