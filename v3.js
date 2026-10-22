@@ -187,14 +187,17 @@ voiceHud.id = 'voiceHud'; document.body.appendChild(voiceHud);
 // ==================== 8. MOD MALAM (tile gelap OSM-style) ====================
 window.nightLayer = null;
 window.toggleNight = function() {
-  if (window.nightLayer) { map.removeLayer(window.nightLayer); window.nightLayer = null; return; }
+  if (window.__nightFilter) { map.getContainer().style.filter = ''; window.__nightFilter = false; return; }
   // Carto dark tiles — open & free
   map.eachLayer(l => { if (l instanceof L.TileLayer && !window.nightBase) window.nightBase = l; });
-  window.nightLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    maxZoom: 19, attribution: '© OpenStreetMap © CARTO | Mapzul Night'
-  });
-  window.nightLayer.addTo(map);
-  window.nightLayer.setZIndex(1);
+  // Fallback tanpa pihak ketiga: guna tile OSM rasmi + CSS filter gelap (100% free, tiada Carto)
+  if (!window.nightBase) map.eachLayer(l => { if (l instanceof L.TileLayer) window.nightBase = l; });
+  if (window.nightBase) {
+    window.nightBase.getContainer(); // noop
+    const el = map.getContainer();
+    el.style.filter = 'invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9)';
+    window.__nightFilter = true;
+  }
 };
 
 // ==================== 9. AUTO NIGHT (mengikut masa tempatan 7pm–7am) ====================
