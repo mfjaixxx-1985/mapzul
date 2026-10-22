@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Mapzul — Navigasi Percuma</title>
+<title>Mangkuk Tandas Map by Pejo — Navigasi Percuma</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; font-family:-apple-system,'Segoe UI',Roboto,sans-serif; }
@@ -56,14 +56,14 @@
 </div>
 <div id="status"></div>
 <button id="btnCenter" title="Pusatkan">⌖</button>
-<div id="logo">MAPZUL</div>
+<div id="logo">MTM PEJO</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 // ====== MAP (OpenStreetMap tiles — free) ======
 const map = L.map('map', {zoomControl:false}).setView([3.139, 101.687], 13);
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 19, attribution: '© OpenStreetMap | Mapzul'
+  maxZoom: 19, attribution: '© OpenStreetMap | Mangkuk Tandas Map by Pejo'
 }).addTo(map);
 
 let meMarker = null, mePos = null;
@@ -199,7 +199,7 @@ map.on('contextmenu', e => {
   if (toPt) calcRoute();
 });
 </script>
-<script src="v2.js?v=32"></script></script>
-<script src="v3.js?v=32"></script>
+<script src="v2.js?v=33"></script></script>
+<script src="v3.js?v=33"></script>
 </body>
 </html>

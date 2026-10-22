@@ -1,4 +1,4 @@
-// Mapzul v2 extensions — alternatif laluan, laporan komuniti, PWA, offline tiles
+// Mangkuk Tandas Map by Pejo v2 extensions — alternatif laluan, laporan komuniti, PWA, offline tiles
 // Dimuat selepas skrip utama dalam index.html
 
 // ==================== 1. ALTERNATIF LALUAN ====================
@@ -89,7 +89,7 @@ document.getElementById('btnReport').onclick = () => {
 function addReport(type) {
   const pos = mePos || map.getCenter();
   saveReport({id: crypto.randomUUID(), type, lat: pos.lat + (Math.random()-.5)*0.0005, lng: pos.lng + (Math.random()-.5)*0.0005, t: Date.now()});
-  status('Terima kasih! Laporan dikongsi dengan komuniti Mapzul ✔', false);
+  status('Terima kasih! Laporan dikongsi dengan komuniti Mangkuk Tandas Map by Pejo ✔', false);
 }
 loadReports();
 
@@ -100,11 +100,11 @@ const iconDataURI = (() => {
   const c = document.createElement('canvas'); c.width = c.height = 192;
   const x = c.getContext('2d');
   x.fillStyle = '#0d1117'; x.fillRect(0,0,192,192);
-  x.fillStyle = '#3fb950'; x.font = 'bold 120px sans-serif'; x.textAlign='center'; x.textBaseline='middle';
-  x.fillText('M', 96, 104);
+  x.fillStyle = '#3fb950'; x.font = 'bold 64px sans-serif'; x.textAlign='center'; x.textBaseline='middle';
+  x.fillText('MTM', 96, 104);
   return c.toDataURL('image/png');
 })();
-const manifest = {name:'Mapzul', short_name:'Mapzul', start_url:'.', display:'standalone', background_color:'#0d1117', theme_color:'#0d1117',
+const manifest = {name:'Mangkuk Tandas Map by Pejo', short_name:'MTM Pejo', start_url:'.', display:'standalone', background_color:'#0d1117', theme_color:'#0d1117',
   icons:[{src: iconDataURI, sizes:'192x192', type:'image/png'}]};
 const mfBlob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
 document.querySelector('head').insertAdjacentHTML('beforeend', `<link rel="manifest" href="${URL.createObjectURL(mfBlob)}">`);
