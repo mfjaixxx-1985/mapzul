@@ -107,7 +107,6 @@ const iconDataURI = (() => {
 const manifest = {name:'Mangkuk Tandas Map by Pejo', short_name:'MTM Pejo', start_url:'.', display:'standalone', background_color:'#0d1117', theme_color:'#0d1117',
   icons:[{src: iconDataURI, sizes:'192x192', type:'image/png'}]};
 const mfBlob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
-document.querySelector('head').insertAdjacentHTML('beforeend', `<link rel="manifest" href="${URL.createObjectURL(mfBlob)}">`);
 document.querySelector('head').insertAdjacentHTML('beforeend', `<link rel="icon" href="${iconDataURI}">`);
 
 // Service worker — cache tiles & app shell utk offline
@@ -131,8 +130,7 @@ if ('serviceWorker' in navigator) {
       e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
     });
   `;
-  const swBlob = new Blob([swCode], {type:'text/javascript'});
-  navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(()=>{});
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
 }
 
 // ==================== 4. OFFLINE status indicator ====================
